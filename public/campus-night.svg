@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" fill="none">
+ <defs>
+  <linearGradient id="sky" x1="960" y1="0" x2="960" y2="1080" gradientUnits="userSpaceOnUse"><stop stop-color="#09091B"/><stop offset=".47" stop-color="#17152C"/><stop offset=".76" stop-color="#3C1A42"/><stop offset="1" stop-color="#101020"/></linearGradient>
+  <radialGradient id="glowP" cx="0" cy="0" r="1" gradientTransform="matrix(540 140 -90 348 1311 570)" gradientUnits="userSpaceOnUse"><stop stop-color="#FF5BC8" stop-opacity=".48"/><stop offset="1" stop-color="#FF5BC8" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glowB" cx="0" cy="0" r="1" gradientTransform="matrix(600 110 -82 448 475 622)" gradientUnits="userSpaceOnUse"><stop stop-color="#694DFF" stop-opacity=".38"/><stop offset="1" stop-color="#694DFF" stop-opacity="0"/></radialGradient>
+  <linearGradient id="glass" x1="1060" y1="310" x2="1415" y2="921" gradientUnits="userSpaceOnUse"><stop stop-color="#27223D"/><stop offset=".55" stop-color="#11172B"/><stop offset="1" stop-color="#070B17"/></linearGradient>
+  <linearGradient id="tower" x1="560" y1="380" x2="760" y2="950" gradientUnits="userSpaceOnUse"><stop stop-color="#292342"/><stop offset="1" stop-color="#101323"/></linearGradient>
+  <linearGradient id="road" x1="960" y1="810" x2="960" y2="1080" gradientUnits="userSpaceOnUse"><stop stop-color="#17172A"/><stop offset="1" stop-color="#090A15"/></linearGradient>
+  <pattern id="windows" width="45" height="48" patternUnits="userSpaceOnUse"><rect x="10" y="10" width="11" height="21" rx="2" fill="#B18BE6" fill-opacity=".7"/><rect x="27" y="10" width="8" height="21" rx="2" fill="#42D9FF" fill-opacity=".52"/></pattern>
+  <pattern id="windows2" width="39" height="46" patternUnits="userSpaceOnUse"><rect x="8" y="9" width="9" height="20" rx="2" fill="#FF74D3" fill-opacity=".72"/><rect x="24" y="9" width="8" height="20" rx="2" fill="#D0BBFF" fill-opacity=".4"/></pattern>
+  <filter id="blur30" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="30"/></filter>
+  <filter id="neon" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ </defs>
+ <path fill="url(#sky)" d="M0 0h1920v1080H0z"/>
+ <path fill="url(#glowP)" d="M0 0h1920v1080H0z"/><path fill="url(#glowB)" d="M0 0h1920v1080H0z"/>
+ <g fill="#E4DDFF" opacity=".62"><circle cx="136" cy="134" r="1.5"/><circle cx="310" cy="224" r="1"/><circle cx="484" cy="126" r="1.3"/><circle cx="672" cy="198" r="1"/><circle cx="880" cy="112" r="1.5"/><circle cx="1080" cy="189" r="1"/><circle cx="1217" cy="94" r="1.2"/><circle cx="1580" cy="177" r="1.3"/><circle cx="1760" cy="102" r="1"/><circle cx="1830" cy="252" r="1.4"/><circle cx="245" cy="340" r="1.1"/><circle cx="1518" cy="327" r="1"/><circle cx="946" cy="270" r="1.1"/></g>
+ <path d="M0 458c222-52 362-60 544-24 215 43 405 36 570-28 187-73 384-77 806 0v234H0V458Z" fill="#17152B" fill-opacity=".48"/>
+ <!-- campus silhouettes -->
+ <path d="M0 606h126V433h81V366h79v240h71v-98h90v98h70v-190h47v-89h65v279h95v-74h96v106H0v-32Z" fill="#0C1020"/>
+ <path d="M58 485h63v117H58zM254 397h75v205h-75zM431 526h72v76h-72zM609 382h46v220h-46zM734 489h93v113h-93z" fill="url(#windows)" opacity=".52"/>
+ <path d="M1321 599V438l83-53v-48l88 40 4 222h83V415l67-48 58 36v196h216v188h-599V599Z" fill="#0B1020"/>
+ <path d="M1405 406h86v193h-86zM1599 420h86v179h-86zM1714 403h75v196h-75zM1850 448h69v151h-69z" fill="url(#windows2)" opacity=".46"/>
+ <!-- main glass campus hall -->
+ <path d="M703 894V571l326-160 308 123v360H703Z" fill="url(#glass)" stroke="#9C5CFF" stroke-opacity=".55" stroke-width="2"/>
+ <path d="m703 571 326-160v483H703V571Z" fill="#15182C"/>
+ <path d="m1029 411 308 123v360h-308V411Z" fill="#111A2A"/>
+ <path d="M748 580 986 462v311H748V580Z" fill="url(#windows)" opacity=".87"/>
+ <path d="M1065 469 1293 559v214h-228V469Z" fill="url(#windows2)" opacity=".82"/>
+ <path d="M703 571 1029 411l308 123" stroke="#B57AFF" stroke-width="3" filter="url(#neon)"/>
+ <path d="M691 897h659" stroke="#FF5BC8" stroke-opacity=".85" stroke-width="3" filter="url(#neon)"/>
+ <path d="m699 573 333-164 313 125" stroke="#E7C8FF" stroke-opacity=".52" stroke-width="1"/>
+ <!-- illuminated university sign -->
+ <g filter="url(#neon)"><rect x="886" y="527" width="271" height="52" rx="5" fill="#141326" stroke="#FF5BC8" stroke-opacity=".95"/><text x="1021" y="560" text-anchor="middle" fill="#FFF6FF" font-family="Arial,sans-serif" font-size="25" font-weight="700" letter-spacing="9">LPU</text></g>
+ <!-- foreground plaza / perspective lines -->
+ <path d="M0 799 700 874h646l574-109v315H0V799Z" fill="url(#road)"/>
+ <path d="m0 814 704 74M0 895l705 25M1920 800l-574 88m574 13-574 24M0 1030l705-86h642l573 85" stroke="#7D58B7" stroke-opacity=".32" stroke-width="2"/>
+ <path d="m785 1080 171-190m191 190-102-190" stroke="#42D9FF" stroke-opacity=".28" stroke-width="2"/>
+ <path d="M0 759h590m765 0h565" stroke="#FF5BC8" stroke-opacity=".27" stroke-width="2"/>
+ <!-- campus trees and light pools -->
+ <ellipse cx="455" cy="841" rx="310" ry="53" fill="#783DAB" fill-opacity=".23" filter="url(#blur30)"/><ellipse cx="1460" cy="840" rx="290" ry="48" fill="#FF5BC8" fill-opacity=".2" filter="url(#blur30)"/>
+ <g fill="#080D19"><path d="M100 838h16V707h-16zM41 740c0-47 28-75 67-75s66 29 66 75c0 27-12 45-23 58H63c-13-14-22-32-22-58ZM1745 837h14V694h-14zM1684 726c0-42 25-72 68-72 39 0 65 31 65 72 0 27-11 45-23 59h-87c-12-14-23-32-23-59Z"/></g>
+ <g fill="#FF7CD8" opacity=".77" filter="url(#neon)"><circle cx="365" cy="818" r="3"/><circle cx="1552" cy="807" r="3"/><circle cx="566" cy="835" r="2"/><circle cx="1330" cy="813" r="2"/></g>
+ <rect width="1920" height="1080" fill="#060710" fill-opacity=".24"/>
+</svg>

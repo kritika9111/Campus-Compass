@@ -1,0 +1,4 @@
+"use client";
+import { useEffect, useState } from "react";
+import { Bookmark } from "lucide-react";
+export function SaveItemButton({reportId}:{reportId:string}){const [saved,setSaved]=useState(false),[busy,setBusy]=useState(false);useEffect(()=>{let live=true;fetch("/api/member?type=saved").then(r=>r.json()).then(d=>{if(live)setSaved((d.items||[]).includes(reportId))}).catch(()=>{});return()=>{live=false}},[reportId]);async function toggle(){setBusy(true);const r=await fetch("/api/member",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:"saved",report_id:reportId,saved:!saved})});if(r.ok)setSaved(!saved);setBusy(false)}return <button className={`save-button ${saved?"saved":""}`} onClick={toggle} disabled={busy} aria-pressed={saved} aria-label={saved?"Remove saved item":"Save item"}><Bookmark size={16} fill={saved?"currentColor":"none"}/>{saved?"Saved":"Save item"}</button>}
