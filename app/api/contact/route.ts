@@ -2,6 +2,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { contactInput } from "@/lib/validation";
+import { sendContactNotification } from "@/lib/contact-email";
+
+export const runtime = "nodejs";
 
 const WINDOW_MS = 60 * 60 * 1000;
 const MAX_PER_WINDOW = 5;
@@ -44,18 +47,8 @@ export async function POST(request: Request) {
     const ticketId = `CC-${randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase()}`;
     await db.collection("contact_messages").insertOne({ _id: randomUUID(), ...data, ticket_id: ticketId, status: "Pending", created_at: now, updated_at: now });
 
-    let emailSent = false;
-    const { RESEND_API_KEY, CONTACT_ADMIN_EMAIL, RESEND_FROM_EMAIL } = process.env;
-    if (RESEND_API_KEY && CONTACT_ADMIN_EMAIL && RESEND_FROM_EMAIL) {
-      try {
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST", headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: RESEND_FROM_EMAIL, to: [CONTACT_ADMIN_EMAIL], reply_to: data.email, subject: `[${ticketId}] ${data.category}: ${data.subject}`, text: `Ticket: ${ticketId}\nFrom: ${data.name} <${data.email}>\nCategory: ${data.category}\n\n${data.message}` }),
-          signal: AbortSignal.timeout(8000),
-        });
-        emailSent = response.ok;
-      } catch { emailSent = false; }
-    }
+    // Notification errors never undo or hide a successfully stored submission.
+    const emailSent = await sendContactNotification({ ...data, ticketId }).catch(() => false);
     return NextResponse.json({ ticketId, emailSent }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "We could not save your message right now. Please try again shortly." }, { status: 500 });

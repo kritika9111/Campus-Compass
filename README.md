@@ -30,7 +30,7 @@ A campus Lost & Found service for students and staff.
 
 `MONGODB_URI`, `MONGODB_DB`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are required. Generate `AUTH_SECRET` with a cryptographically secure random value.
 
-Contact support uses the existing MongoDB connection and stores messages in `contact_messages`. To enable administrator email notifications, configure `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (a sender verified with Resend), and `CONTACT_ADMIN_EMAIL` in the Vercel environments you use. These are server-only variables; do not prefix them with `NEXT_PUBLIC_`. The admin inbox uses the existing `users.role = "admin"` access control.
+Contact support uses the existing MongoDB connection and stores messages in `contact_messages`. Gmail SMTP notifications use Nodemailer in a Node.js serverless function. Configure `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`, `SMTP_USER`, `SMTP_APP_PASSWORD`, and `CONTACT_ADMIN_EMAIL` in Vercel. Use a Google App Password for `SMTP_APP_PASSWORD`; never use your normal Google password. Keep every SMTP value server-side and do not prefix it with `NEXT_PUBLIC_`. The contact request is saved before sending email, so an SMTP outage does not lose the message; administrators can still review it in the role-protected inbox. The inbox uses the existing `users.role = "admin"` access control.
 
 ## Existing Supabase data
 
