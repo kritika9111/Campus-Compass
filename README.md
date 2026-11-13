@@ -30,6 +30,8 @@ A campus Lost & Found service for students and staff.
 
 `MONGODB_URI`, `MONGODB_DB`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are required. Generate `AUTH_SECRET` with a cryptographically secure random value.
 
+Contact support uses the existing MongoDB connection and stores messages in `contact_messages`. To enable administrator email notifications, configure `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (a sender verified with Resend), and `CONTACT_ADMIN_EMAIL` in the Vercel environments you use. These are server-only variables; do not prefix them with `NEXT_PUBLIC_`. The admin inbox uses the existing `users.role = "admin"` access control.
+
 ## Existing Supabase data
 
 The application no longer needs Supabase at runtime. To retain existing data, export the `profiles`, `item_reports`, `report_photos`, `claims`, `claim_messages`, `claim_status_history`, `saved_items`, `notifications`, `member_preferences`, `status_history`, and `moderation_actions` tables as JSON arrays. Create `user-map.json` mapping each exported Supabase user UUID to that user’s Google email, and place it beside the table JSON files. For photos, download each private object and add its local path as `local_file` in the corresponding `report_photos.json` row. With the MongoDB and Cloudinary environment variables set, run `node scripts/import-supabase-export.mjs ./path/to/export`. IDs and report/claim links are preserved; user IDs become lowercased Google emails, which Auth.js uses as stable app IDs. Review imported counts, roles, and relationships before switching traffic. Do not delete old Supabase data until the import is reviewed.

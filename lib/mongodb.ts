@@ -21,6 +21,10 @@ export async function getDb(): Promise<AppDb> {
     db.collection("messages").createIndex({ claim_id: 1, created_at: 1 }),
     db.collection("notifications").createIndex({ user_id: 1, created_at: -1 }),
     db.collection("saved_items").createIndex({ user_id: 1, report_id: 1 }, { unique: true }),
+    db.collection("contact_messages").createIndex({ ticket_id: 1 }, { unique: true }),
+    db.collection("contact_messages").createIndex({ status: 1, created_at: -1 }),
+    db.collection("contact_rate_limits").createIndex({ key: 1 }, { unique: true }),
+    db.collection("contact_rate_limits").createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 }),
   ]).then(() => undefined);
   await ready;
   return db as AppDb;

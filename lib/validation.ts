@@ -33,3 +33,11 @@ export const signInInput = z.object({
   email: z.string().trim().email("Please provide a valid email address."),
   password: z.string().min(1, "Password is required."),
 });
+
+export const contactInput = z.object({
+  name: z.string().trim().min(2).max(100),
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+  category: z.enum(["Lost Item", "Found Item", "Account/Login Issue", "Technical Issue", "Report Inappropriate Content", "General Enquiry"]),
+  subject: z.string().trim().min(3).max(120),
+  message: z.string().trim().min(10).max(3000),
+});
