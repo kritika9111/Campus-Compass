@@ -19,10 +19,16 @@ export function isSameOrigin(request: Request) {
 
 export async function readJsonBody(request: Request, maxBytes = 16_384): Promise<unknown> {
   const mediaType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
-  if (mediaType !== "application/json") throw new RequestBodyError("Send report data as JSON.", 415);
+  if (mediaType !== "application/json") throw new RequestBodyError("Send request data as JSON.", 415);
 
-  const declaredLength = Number(request.headers.get("content-length") ?? 0);
-  if (declaredLength > maxBytes) throw new RequestBodyError("The request is too large.", 413);
+  const contentLengthHeader = request.headers.get("content-length");
+  if (contentLengthHeader !== null) {
+    const declaredLength = Number(contentLengthHeader);
+    if (!Number.isFinite(declaredLength) || declaredLength < 0) {
+      throw new RequestBodyError("Invalid Content-Length header.", 400);
+    }
+    if (declaredLength > maxBytes) throw new RequestBodyError("The request is too large.", 413);
+  }
   if (!request.body) throw new RequestBodyError("A request body is required.", 400);
 
   const reader = request.body.getReader();
@@ -50,4 +56,12 @@ export async function readJsonBody(request: Request, maxBytes = 16_384): Promise
   } catch {
     throw new RequestBodyError("The request body is not valid JSON.", 400);
   }
+}
+
+export async function readJsonObject(request: Request, maxBytes = 16_384): Promise<Record<string, unknown>> {
+  const parsed = await readJsonBody(request, maxBytes);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new RequestBodyError("The request body must be a JSON object.", 400);
+  }
+  return parsed as Record<string, unknown>;
 }

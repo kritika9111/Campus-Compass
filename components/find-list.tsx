@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, SlidersHorizontal, X, ArrowLeft, ArrowRight, LoaderCircle } from "lucide-react";
 import { ItemCard } from "@/components/item-card";
 import { categories, type ItemReport } from "@/lib/types";
@@ -30,9 +30,26 @@ export function FindList({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
+  const skipNextFetch = useRef(true);
+
+  const initialFilterKey = JSON.stringify(initialFilters);
+  useEffect(() => {
+    skipNextFetch.current = true;
+    setItems(initialItems);
+    setTotal(initialTotal);
+    setPage(initialPage);
+    setPageCount(initialPageCount);
+    setFilters(initialFilters);
+    setError("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialItems, initialTotal, initialPage, initialPageCount, initialFilterKey]);
 
   useEffect(() => {
     if (previewOnly) return;
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
+      return;
+    }
     const abort = new AbortController();
     const timer = window.setTimeout(async () => {
       setBusy(true);
@@ -42,13 +59,13 @@ export function FindList({
       if (filters.location.trim()) params.set("location", filters.location.trim());
       try {
         const response = await fetch(`/api/reports?${params.toString()}`, { signal: abort.signal });
-        const result = await response.json() as { items?: ItemReport[]; total?: number; page?: number; pageCount?: number; error?: string };
-        if (!response.ok) throw new Error(result.error ?? "Could not load reports.");
+        const result = await response.json().catch(() => null) as { items?: ItemReport[]; total?: number; page?: number; pageCount?: number; error?: string } | null;
+        if (!response.ok) throw new Error(result?.error ?? "Could not load reports.");
         window.history.replaceState(null, "", `/find?${params.toString()}`);
-        setItems(result.items ?? []);
-        setTotal(result.total ?? 0);
-        setPage(result.page ?? 1);
-        setPageCount(result.pageCount ?? 1);
+        setItems(result?.items ?? []);
+        setTotal(result?.total ?? 0);
+        setPage(result?.page ?? 1);
+        setPageCount(result?.pageCount ?? 1);
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === "AbortError") return;
         setError(cause instanceof Error ? cause.message : "Campus reports are temporarily unavailable.");

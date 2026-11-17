@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { passwordSchema, signUpInput, reportInput, claimInput } from "./validation.ts";
+import { passwordSchema, signUpInput, reportInput, claimInput, contactInput } from "./validation.ts";
 
 test("Password Rules: Rejects invalid passwords", () => {
   // Too short
@@ -80,4 +80,29 @@ test("Claim Input: Validates private claim evidence constraints", () => {
     ownership_details: "Mine",
   });
   assert.equal(tooShort.success, false);
+});
+
+test("Contact Input: Validates handover disputes for both lost-item owners and finders", () => {
+  const ownerDispute = contactInput.safeParse({
+    name: "Mohit Singh",
+    email: "Mohit@Example.com",
+    party_role: "Lost item owner",
+    category: "Handover Dispute — Finder Refuses Return",
+    report_id: "12345678-1234-1234-1234-123456789abc",
+    claim_id: "87654321-4321-4321-4321-cba987654321",
+    subject: "Finder disagrees to hand over my calculator",
+    message: "I proved ownership with the serial sticker, but the finder is refusing to meet at the library desk.",
+  });
+  assert.equal(ownerDispute.success, true);
+  assert.equal(ownerDispute.data.email, "mohit@example.com");
+
+  const finderDispute = contactInput.safeParse({
+    name: "Ananya Verma",
+    email: "ananya@example.com",
+    party_role: "Item finder",
+    category: "Handover Dispute — Claimant Issue",
+    subject: "Claimant refuses public desk handover",
+    message: "The claimant is insisting on meeting off-campus instead of the Block 30 DSW desk.",
+  });
+  assert.equal(finderDispute.success, true);
 });

@@ -21,30 +21,33 @@ export default async function ClaimPage({ params }: { params: Promise<{ id: stri
     db.collection("messages").find({ claim_id: id }).sort({ created_at: 1 }).toArray(),
     db.collection("claim_status_history").find({ claim_id: id }).sort({ created_at: 1 }).toArray(),
   ]);
+  const toIso = (value: unknown) =>
+    value instanceof Date && !Number.isNaN(value.getTime()) ? value.toISOString() : typeof value === "string" ? value : "";
+
   const handover = claim.handover ? {
-    location: claim.handover.location,
-    date: claim.handover.date,
-    time_window: claim.handover.time_window,
-    note: claim.handover.note,
+    location: String(claim.handover.location ?? ""),
+    date: String(claim.handover.date ?? ""),
+    time_window: String(claim.handover.time_window ?? ""),
+    note: typeof claim.handover.note === "string" ? claim.handover.note : undefined,
     proposed_by_you: claim.handover.proposed_by === user.id,
-    proposed_at: claim.handover.proposed_at,
+    proposed_at: toIso(claim.handover.proposed_at),
     confirmed: Boolean(claim.handover.confirmed_by),
-    confirmed_at: claim.handover.confirmed_at,
+    confirmed_at: claim.handover.confirmed_at ? toIso(claim.handover.confirmed_at) : null,
   } : undefined;
 
-  const publicMessages = messages.map((message) => ({
+  const publicMessages: ClaimMessage[] = messages.map((message) => ({
     id: String(message._id),
     isMine: message.sender_id === user.id,
     body: String(message.body),
-    created_at: message.created_at,
-  })) as ClaimMessage[];
-  const publicHistory = history.map((event) => ({
+    created_at: toIso(message.created_at),
+  }));
+  const publicHistory: ClaimStatusEvent[] = history.map((event) => ({
     id: String(event._id),
-    old_state: event.old_state ?? null,
+    old_state: event.old_state ? String(event.old_state) : null,
     new_state: String(event.new_state),
-    note: event.note ?? null,
-    created_at: event.created_at,
-  })) as ClaimStatusEvent[];
+    note: event.note ? String(event.note) : null,
+    created_at: toIso(event.created_at),
+  }));
 
   return (
     <main className="page-wrap claim-detail-page">
@@ -61,6 +64,8 @@ export default async function ClaimPage({ params }: { params: Promise<{ id: stri
       </div>
       <ClaimWorkspace
         claimId={id}
+        reportId={String(item._id)}
+        itemTitle={String(item.title)}
         isOwner={item.reporter_id === user.id}
         state={claim.state}
         details={claim.ownership_details}

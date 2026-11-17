@@ -14,13 +14,23 @@ export function AdminModeration({ items }: { items: Report[] }) {
   async function moderate(item: Report, nextState: "open" | "hidden") {
     setBusy(item.id);
     setError("");
-    const response=await fetch(`/api/reports/${item.id}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"moderate",state:nextState,reason:"Reviewed by campus moderator"})});
-    if (!response.ok) {
-      setError("Could not update that report. Please check your administrator access and try again.");
-    } else {
-      router.refresh();
+    try {
+      const response = await fetch(`/api/reports/${item.id}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "moderate", state: nextState, reason: "Reviewed by campus moderator" }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => null) as { error?: string } | null;
+        setError(result?.error || "Could not update that report. Please check your administrator access and try again.");
+      } else {
+        router.refresh();
+      }
+    } catch {
+      setError("Connection problem. Please try again.");
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   }
 
   return <>

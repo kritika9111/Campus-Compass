@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { HandHelping, X, LoaderCircle, ShieldCheck } from "lucide-react";
 
@@ -20,6 +20,15 @@ export function ClaimButton({ reportId, disabled = false }: { reportId: string; 
   const [error, setError] = useState("");
   const router = useRouter();
 
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, busy]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -34,6 +43,11 @@ export function ClaimButton({ reportId, disabled = false }: { reportId: string; 
     }
 
     const formattedDetails = `[Proof Category: ${evidenceType}]\n${rawDetails}`;
+    if (formattedDetails.length > 1000) {
+      setError("Please keep your identifying details concise (under 900 characters).");
+      setBusy(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/claims", {
@@ -41,10 +55,14 @@ export function ClaimButton({ reportId, disabled = false }: { reportId: string; 
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ report_id: reportId, ownership_details: formattedDetails }),
       });
-      const result = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(result.error ?? "Could not send your claim.");
+      const result = await response.json().catch(() => null) as { id?: string; error?: string } | null;
+      if (!response.ok) throw new Error(result?.error ?? "Could not send your claim.");
       setOpen(false);
-      router.refresh();
+      if (result?.id) {
+        router.push(`/claims/${result.id}`);
+      } else {
+        router.refresh();
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not send your claim.");
     } finally {

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isUserSuspended } from "@/lib/access";
+import { sendMemberAlertEmail } from "@/lib/email";
 import { getDb, withMongoTransaction } from "@/lib/mongodb";
 import { claimInput } from "@/lib/validation";
 import { isSameOrigin, readJsonBody, RequestBodyError } from "@/lib/http";
@@ -9,6 +11,7 @@ export async function POST(request: Request) {
     if (!isSameOrigin(request)) return NextResponse.json({ error: "Cross-origin request denied." }, { status: 403 });
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+    if (await isUserSuspended(session.user.email)) return NextResponse.json({ error: "Account suspended." }, { status: 403 });
 
     const parsed = claimInput.safeParse(await readJsonBody(request));
     if (!parsed.success) {
@@ -63,10 +66,20 @@ export async function POST(request: Request) {
         title: "A new claim needs review", body: report.title, href: `/claims/${claimId}`, created_at: now,
       }, { session: mongoSession });
 
-      return { status: 201, id: claimId };
+      return { status: 201, id: claimId, reporterId: String(report.reporter_id || ""), reportTitle: String(report.title || "Found item") };
     });
 
     if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+
+    if (result.reporterId) {
+      await sendMemberAlertEmail({
+        recipientEmail: result.reporterId,
+        prefKey: "claims",
+        subject: `New private claim on "${result.reportTitle}"`,
+        text: `Someone submitted private ownership proof for your found item "${result.reportTitle}".\n\nOpen /claims/${result.id} in Campus Compass to review the details privately.`,
+      }).catch(() => false);
+    }
+
     return NextResponse.json({ submitted: true, id: result.id }, { status: result.status });
   } catch (error) {
     if (error instanceof RequestBodyError) return NextResponse.json({ error: error.message }, { status: error.status });

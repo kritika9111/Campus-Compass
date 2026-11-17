@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { formatCampusDate, getCampusTodayDateString } from "@/lib/datetime";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -54,6 +56,8 @@ const OFFICIAL_HANDOVER_HUBS = [
 
 export function ClaimWorkspace({
   claimId,
+  reportId,
+  itemTitle,
   isOwner,
   state,
   details,
@@ -62,6 +66,8 @@ export function ClaimWorkspace({
   statusHistory = [],
 }: {
   claimId: string;
+  reportId?: string;
+  itemTitle?: string;
   isOwner: boolean;
   state: string;
   details: string;
@@ -79,9 +85,23 @@ export function ClaimWorkspace({
   const [handoverTime, setHandoverTime] = useState("");
   const [handoverNote, setHandoverNote] = useState("");
   const [additionalEvidence, setAdditionalEvidence] = useState("");
+  const [minHandoverDate, setMinHandoverDate] = useState("");
 
   const router = useRouter();
   const conversationClosed = state === "declined" || state === "completed";
+
+  useEffect(() => {
+    setMinHandoverDate(getCampusTodayDateString());
+  }, []);
+
+  useEffect(() => {
+    if (!showHandoverModal) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) setShowHandoverModal(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showHandoverModal, busy]);
 
   // Parse evidence category header if formatted
   let evidenceCategory = "Physical Ownership Details";
@@ -101,11 +121,15 @@ export function ClaimWorkspace({
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const body = String(new FormData(form).get("body") ?? "").trim();
+    if (!body) {
+      setError("Enter a message before sending.");
+      return;
+    }
     setBusy(true);
     setError("");
     setSuccessNote("");
-    const form = event.currentTarget;
-    const body = String(new FormData(form).get("body") ?? "").trim();
     try {
       await sendMessage(body);
       form.reset();
@@ -294,7 +318,9 @@ export function ClaimWorkspace({
             <div className="handover-plan-summary" aria-live="polite">
               <b>Proposed meeting</b>
               <span>{handover.location}</span>
-              <span>{new Date(`${handover.date}T00:00:00`).toLocaleDateString("en-IN", { dateStyle: "long" })} · {handover.time_window}</span>
+              <span>
+                {new Intl.DateTimeFormat("en-IN", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${handover.date}T00:00:00Z`))} · {handover.time_window}
+              </span>
               {handover.note && <p>{handover.note}</p>}
               <small>
                 {handover.confirmed
@@ -310,7 +336,7 @@ export function ClaimWorkspace({
             <button
               type="button"
               className="button button-teal"
-              onClick={() => setShowHandoverModal(true)}
+              onClick={() => { setError(""); setShowHandoverModal(true); }}
               disabled={busy}
             >
               <CalendarDays size={15} /> {handover ? "Propose a different time" : "Propose Handover Desk & Time"}
@@ -382,6 +408,7 @@ export function ClaimWorkspace({
                   <input
                     type="text"
                     required
+                    maxLength={160}
                     value={customLocation}
                     onChange={(e) => setCustomLocation(e.target.value)}
                     placeholder="e.g. Block 14 Central Atrium, Uni Cafe entrance"
@@ -397,7 +424,7 @@ export function ClaimWorkspace({
                     required
                     value={handoverDate}
                     onChange={(e) => setHandoverDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
+                    min={minHandoverDate || undefined}
                   />
                 </label>
 
@@ -419,6 +446,7 @@ export function ClaimWorkspace({
                 Handover instructions / notes
                 <textarea
                   rows={2}
+                  maxLength={500}
                   value={handoverNote}
                   onChange={(e) => setHandoverNote(e.target.value)}
                   placeholder="e.g. I will wait by the security sign-in desk with the item safely packed."
@@ -435,6 +463,12 @@ export function ClaimWorkspace({
                   <li>No cash exchanges or reward demands are permitted.</li>
                 </ul>
               </div>
+
+              {error && (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              )}
 
               <button className="button button-teal" disabled={busy}>
                 {busy ? <LoaderCircle size={16} className="spin" /> : "Post handover proposal to conversation"}
@@ -469,7 +503,7 @@ export function ClaimWorkspace({
                   <p className="message-body">{message.body}</p>
                   <small>
                     {isMine ? "You" : isOwner ? "Claimant" : "Report Owner"} ·{" "}
-                    {new Date(message.created_at).toLocaleString("en-IN", {
+                    {formatCampusDate(message.created_at, {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })}
@@ -614,7 +648,7 @@ export function ClaimWorkspace({
                   <div className="history-line-top">
                     <b>{stateLabels[event.new_state] ?? event.new_state.replace("_", " ")}</b>
                     <small>
-                      {new Date(event.created_at).toLocaleString("en-IN", {
+                      {formatCampusDate(event.created_at, {
                         dateStyle: "medium",
                         timeStyle: "short",
                       })}
@@ -632,6 +666,39 @@ export function ClaimWorkspace({
           </div>
         </section>
       )}
+
+      {/* 7. Admin Dispute Escalation */}
+      <section className="dispute-escalation-card">
+        <div>
+          <span className="eyebrow">
+            <ShieldAlert size={13} /> Admin Dispute Resolution
+          </span>
+          <h3>
+            {isOwner
+              ? "Having an issue with this claimant?"
+              : "Finder refuses or disagrees to hand over your item?"}
+          </h3>
+          <p>
+            {isOwner
+              ? "If the claimant is uncooperative, disputes verification, or makes you feel unsafe, escalate this claim directly to the Campus Compass administrators."
+              : "If the finder disagrees to return your item or handover is stuck, contact the Campus Compass administrators with this claim attached."}
+          </p>
+        </div>
+        <Link
+          href={`/help?${new URLSearchParams({
+            category: isOwner ? "Handover Dispute — Claimant Issue" : "Handover Dispute — Finder Refuses Return",
+            role: isOwner ? "Item finder" : "Lost item owner",
+            claimId,
+            ...(reportId ? { reportId } : {}),
+            subject: itemTitle
+              ? `Handover dispute: ${itemTitle}`.slice(0, 120)
+              : `Handover dispute for claim ${claimId.slice(0, 8)}`,
+          }).toString()}`}
+          className="button button-outline"
+        >
+          <ShieldAlert size={14} /> Contact Admin about this claim
+        </Link>
+      </section>
     </div>
   );
 }
