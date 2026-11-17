@@ -1,3 +1,71 @@
-import Link from "next/link";import {ArrowLeft,Settings,ShieldCheck} from "lucide-react";import {getMember} from "@/lib/access";import {getDb} from "@/lib/mongodb";import {MemberGate} from "@/components/member-gate";import {SettingsForm} from "@/components/settings-form";import {SignOutButton} from "@/components/sign-out-button";
-export default async function SettingsPage(){const {approved,user,profile,role}=await getMember();if(!approved||!user)return <MemberGate/>;const db=await getDb();const prefs=await db.collection("member_preferences").findOne({user_id:user.id});const notify=prefs?.notification_preferences||{claims:true,updates:true};return <main className="page-wrap"><div className="page-topline"><Link href="/dashboard" className="back-link"><ArrowLeft size={15}/> My activity</Link><span className="privacy-tag"><ShieldCheck size={14}/> Account &amp; privacy</span></div><div className="settings-heading"><span className="eyebrow"><Settings size={13}/> Your account</span><h1>Settings</h1><p>Review your account and choose which updates you receive.</p></div><div className="settings-grid"><section className="dashboard-panel"><div className="panel-title"><div><span className="eyebrow">Google sign-in</span><h2>Campus profile</h2></div></div><div className="profile-row"><span className="profile-avatar">{(profile?.name||user.email||"L").slice(0,1).toUpperCase()}</span><span><b>{profile?.name||user.name||"Campus member"}</b><small>{user.email}</small></span></div><div className="account-detail"><span>Campus role</span><b>{role}</b></div><div className="account-detail"><span>Account status</span><b className="verified-status"><ShieldCheck size={13}/> Gmail verified</b></div><p className="settings-note">Your role is assigned by a Campus Compass administrator. Personal contact information is never shown on reports.</p><SignOutButton/></section><section className="dashboard-panel"><div className="panel-title"><div><span className="eyebrow">Keep in touch</span><h2>Notifications</h2></div></div><SettingsForm claims={notify.claims!==false} updates={notify.updates!==false}/></section></div></main>}
+import Link from "next/link";
+import { ArrowLeft, Settings, ShieldCheck } from "lucide-react";
+import { getMember } from "@/lib/access";
+import { getDb } from "@/lib/mongodb";
+import { MemberGate } from "@/components/member-gate";
+import { PasswordSettingsForm } from "@/components/password-settings-form";
+import { SettingsForm } from "@/components/settings-form";
+import { SignOutButton } from "@/components/sign-out-button";
+
+export default async function SettingsPage() {
+  const { approved, user, profile, role } = await getMember();
+  if (!approved || !user) return <MemberGate />;
+  const db = await getDb();
+  const prefs = await db.collection("member_preferences").findOne({ user_id: user.id });
+  const notify = prefs?.notification_preferences || { claims: true, updates: true };
+  const isCredentials = profile?.auth_provider === "credentials" || Boolean(profile?.password_hash);
+
+  return (
+    <main className="page-wrap">
+      <div className="page-topline">
+        <Link href="/dashboard" className="back-link"><ArrowLeft size={15} /> My activity</Link>
+        <span className="privacy-tag"><ShieldCheck size={14} /> Account &amp; privacy</span>
+      </div>
+      <div className="settings-heading">
+        <span className="eyebrow"><Settings size={13} /> Your account</span>
+        <h1>Settings</h1>
+        <p>Review your account and choose which updates you receive.</p>
+      </div>
+      <div className="settings-grid">
+        <section className="dashboard-panel">
+          <div className="panel-title">
+            <div>
+              <span className="eyebrow">{isCredentials ? "Email & password" : "Google sign-in"}</span>
+              <h2>Campus profile</h2>
+            </div>
+          </div>
+          <div className="profile-row">
+            <span className="profile-avatar">{(profile?.name || user.email || "L").slice(0, 1).toUpperCase()}</span>
+            <span>
+              <b>{profile?.name || user.name || "Campus member"}</b>
+              <small>{user.email}</small>
+            </span>
+          </div>
+          <div className="account-detail"><span>Campus role</span><b>{role}</b></div>
+          <div className="account-detail">
+            <span>Account status</span>
+            <b className="verified-status"><ShieldCheck size={13} /> {isCredentials ? "Member active" : "Gmail verified"}</b>
+          </div>
+          <p className="settings-note">Your role is assigned by a Campus Compass administrator. Personal contact information is never shown on reports.</p>
+          <SignOutButton />
+        </section>
+        <section className="dashboard-panel">
+          <div className="panel-title">
+            <div><span className="eyebrow">Keep in touch</span><h2>Notifications</h2></div>
+          </div>
+          <SettingsForm claims={notify.claims !== false} updates={notify.updates !== false} />
+        </section>
+        <section className="dashboard-panel settings-password-panel">
+          <div className="panel-title">
+            <div>
+              <span className="eyebrow">Security</span>
+              <h2>{profile?.password_hash ? "Change password" : "Backup password"}</h2>
+            </div>
+          </div>
+          <PasswordSettingsForm hasPassword={Boolean(profile?.password_hash)} />
+        </section>
+      </div>
+    </main>
+  );
+}
 

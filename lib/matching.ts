@@ -85,15 +85,31 @@ function findMatchedTokens(tokensA: string[], tokensB: string[]): string[] {
   return Array.from(matched);
 }
 
-function extractKeywords(tokens: string[], vocabulary: string[]): string[] {
+function extractKeywords(tokens: string[], normalizedText: string, vocabulary: string[]): string[] {
   const tokenSet = new Set(tokens);
-  return vocabulary.filter((word) => tokenSet.has(word));
+  return vocabulary.filter((word) => {
+    if (!word.includes(" ")) return tokenSet.has(word);
+    return normalizedText.includes(word);
+  });
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function identifyHub(locationText: string): string | null {
   const lower = locationText.toLowerCase();
   for (const hub of CAMPUS_HUBS) {
-    if (hub.keywords.some((kw) => lower.includes(kw))) {
+    if (
+      hub.keywords.some((kw) => {
+        if (kw.endsWith("-")) return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(kw)}`, "i").test(lower);
+        return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(kw)}(?:$|[^a-z0-9])`, "i").test(lower);
+      })
+    ) {
+      // Avoid matching "ground floor" as Sports Complex "ground"
+      if (hub.name === "Sports Complex / Robopark" && /\bground\s+floor\b/i.test(lower) && !/\b(?:sports\s+complex|indoor\s+stadium|robopark|gym|sports\s+ground|football\s+ground|cricket\s+ground)\b/i.test(lower)) {
+        continue;
+      }
       return hub.name;
     }
   }
@@ -134,15 +150,17 @@ export function scoreReportPair(target: ItemReport, candidate: ItemReport): Matc
   });
 
   // 3. Distinctive Attributes (Brand & Color) (Max 20)
+  const targetCombined = `${target.title} ${target.description}`.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ");
+  const candidateCombined = `${candidate.title} ${candidate.description}`.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ");
   const targetAllTokens = tokenize(`${target.title} ${target.description}`);
   const candidateAllTokens = tokenize(`${candidate.title} ${candidate.description}`);
 
-  const targetColors = extractKeywords(targetAllTokens, COLOR_KEYWORDS);
-  const candidateColors = extractKeywords(candidateAllTokens, COLOR_KEYWORDS);
+  const targetColors = extractKeywords(targetAllTokens, targetCombined, COLOR_KEYWORDS);
+  const candidateColors = extractKeywords(candidateAllTokens, candidateCombined, COLOR_KEYWORDS);
   const sharedColors = targetColors.filter((c) => candidateColors.includes(c));
 
-  const targetBrands = extractKeywords(targetAllTokens, BRAND_KEYWORDS);
-  const candidateBrands = extractKeywords(candidateAllTokens, BRAND_KEYWORDS);
+  const targetBrands = extractKeywords(targetAllTokens, targetCombined, BRAND_KEYWORDS);
+  const candidateBrands = extractKeywords(candidateAllTokens, candidateCombined, BRAND_KEYWORDS);
   const sharedBrands = targetBrands.filter((b) => candidateBrands.includes(b));
 
   let attrScore = 0;
@@ -189,10 +207,11 @@ export function scoreReportPair(target: ItemReport, candidate: ItemReport): Matc
   // 5. Date Proximity (Max 10)
   const targetDate = new Date(target.happened_at).getTime();
   const candidateDate = new Date(candidate.happened_at).getTime();
-  const daysDiff = Math.abs(targetDate - candidateDate) / (1000 * 60 * 60 * 24);
+  const hasValidDates = Number.isFinite(targetDate) && Number.isFinite(candidateDate);
+  const daysDiff = hasValidDates ? Math.abs(targetDate - candidateDate) / (1000 * 60 * 60 * 24) : Number.POSITIVE_INFINITY;
 
   let dateScore = 0;
-  let dateDetail = `Reported ${Math.round(daysDiff)} days apart`;
+  let dateDetail = hasValidDates ? `Reported ${Math.round(daysDiff)} days apart` : "Date comparison unavailable";
   if (daysDiff <= 1) {
     dateScore = 10;
     dateDetail = "Within 24 hours of each other";
@@ -261,9 +280,16 @@ export async function getPotentialMatchesForReport(
 
   // 2. Fetch candidate reports of opposite kind with open/claim_pending/handover state
   const oppositeKind = target.kind === "lost" ? "found" : "lost";
-  const candidateData=await db.collection("reports").find({kind:oppositeKind,state:{$in:["open","claim_pending","handover"]}}).sort({created_at:-1}).limit(50).toArray();
+  const candidateFilter: Record<string, unknown> = {
+    kind: oppositeKind,
+    state: { $in: ["open", "claim_pending", "handover"] },
+  };
+  if (target.reporter_id) {
+    candidateFilter.reporter_id = { $ne: target.reporter_id };
+  }
+  const candidateData = await db.collection("reports").find(candidateFilter).sort({ created_at: -1 }).limit(50).toArray();
   if (!candidateData.length) return [];
-  const candidates=candidateData.map(d=>({...d,id:String(d._id)})) as unknown as ItemReport[];
+  const candidates = candidateData.map((d) => ({ ...d, id: String(d._id) })) as unknown as ItemReport[];
 
   return findMatches(target, candidates, minScore, 4);
 }
@@ -277,26 +303,38 @@ export async function notifyMatchIfNew(
   matchedItem: ItemReport,
   sourceItem: ItemReport
 ): Promise<boolean> {
-  const {getDb}=await import("@/lib/mongodb");const db=await getDb();
+  const { getDb } = await import("@/lib/mongodb");
+  const db = await getDb();
   const targetHref = `/items/${matchedItem.id}`;
 
-  const existing=await db.collection("notifications").findOne({user_id:recipientId,kind:"potential_match",href:targetHref});
+  const result = await db.collection("notifications").updateOne(
+    { user_id: recipientId, kind: "potential_match", href: targetHref },
+    {
+      $setOnInsert: {
+        _id: crypto.randomUUID(),
+        user_id: recipientId,
+        kind: "potential_match",
+        title: `Possible match for your ${sourceItem.kind} item`,
+        body: `A new ${matchedItem.kind} listing "${matchedItem.title}" at ${matchedItem.location} may match your ${sourceItem.title}.`,
+        href: targetHref,
+        created_at: new Date(),
+      },
+    },
+    { upsert: true },
+  );
 
-  if (existing) {
-    return false; // Prevent duplicate notification
+  if (result.upsertedCount > 0) {
+    const { sendMemberAlertEmail } = await import("@/lib/email");
+    await sendMemberAlertEmail({
+      recipientEmail: recipientId,
+      prefKey: "updates",
+      subject: `Possible match for your ${sourceItem.kind} item: ${sourceItem.title}`,
+      text: `A ${matchedItem.kind} listing "${matchedItem.title}" reported near ${matchedItem.location} may match your ${sourceItem.kind} item "${sourceItem.title}".\n\nSign in to Campus Compass and open ${targetHref} to inspect it.`,
+    }).catch(() => false);
+    return true;
   }
 
-  await db.collection("notifications").insertOne({
-    _id:crypto.randomUUID(),
-    user_id: recipientId,
-    kind: "potential_match",
-    title: `Possible match for your ${sourceItem.kind} item`,
-    body: `A new ${matchedItem.kind} listing "${matchedItem.title}" at ${matchedItem.location} may match your ${sourceItem.title}.`,
-    href: targetHref,
-    created_at: new Date(),
-  });
-
-  return true;
+  return false;
 }
 
 export async function notifyOwnersOfPotentialMatches(sourceItem: ItemReport): Promise<void> {

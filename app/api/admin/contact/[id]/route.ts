@@ -1,20 +1,36 @@
 import { NextResponse } from "next/server";
-import { getMember } from "@/lib/access";
-import { getDb } from "@/lib/mongodb";
+import { getAdminAccess } from "@/lib/access";
+import { updateContactMessage, type ContactStatus } from "@/lib/contact-store";
+import { isSameOrigin, readJsonObject, RequestBodyError } from "@/lib/http";
 
-const statuses = ["Pending", "In Progress", "Resolved"] as const;
+const statuses: readonly ContactStatus[] = ["Pending", "In Progress", "Resolved"];
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { approved, role } = await getMember();
-  if (!approved || role !== "admin") return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
-  const { id } = await params;
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Message not found." }, { status: 404 });
-  let body: unknown;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }
-  const status = typeof body === "object" && body !== null && "status" in body ? body.status : null;
-  if (typeof status !== "string" || !statuses.includes(status as (typeof statuses)[number])) return NextResponse.json({ error: "Choose a valid status." }, { status: 400 });
-  const db = await getDb();
-  const result = await db.collection("contact_messages").updateOne({ _id: id }, { $set: { status, updated_at: new Date() } });
-  if (!result.matchedCount) return NextResponse.json({ error: "Message not found." }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  try {
+    if (!isSameOrigin(request)) return NextResponse.json({ error: "Cross-origin request denied." }, { status: 403 });
+    const admin = await getAdminAccess();
+    if (!admin.isAdmin) return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
+    const { id } = await params;
+    if (!uuidPattern.test(id)) return NextResponse.json({ error: "Message not found." }, { status: 404 });
+
+    const body = await readJsonObject(request);
+    const status = body.status;
+    if (typeof status !== "string" || !statuses.includes(status as ContactStatus)) {
+      return NextResponse.json({ error: "Choose a valid status." }, { status: 400 });
+    }
+    const adminNote = typeof body.admin_note === "string" ? body.admin_note : undefined;
+
+    const updated = await updateContactMessage(
+      id,
+      { status: status as ContactStatus, admin_note: adminNote },
+      admin.actorEmail,
+    );
+    if (!updated) return NextResponse.json({ error: "Message not found." }, { status: 404 });
+    return NextResponse.json({ ok: true, item: updated });
+  } catch (error) {
+    if (error instanceof RequestBodyError) return NextResponse.json({ error: error.message }, { status: error.status });
+    console.error("Admin contact status update failed", error);
+    return NextResponse.json({ error: "Could not update the message status." }, { status: 503 });
+  }
 }

@@ -133,3 +133,37 @@ test("Matching Engine: findMatches filters opposite kind and minimum threshold",
   assert.equal(matches.length, 1);
   assert.equal(matches[0].candidate.id, "candidate-1");
 });
+
+test("Matching Engine: handles multi-word brands, word-boundary hubs, and invalid dates safely", () => {
+  const lost = createReport({
+    id: "lost-brand",
+    kind: "lost",
+    title: "American Tourister Backpack",
+    description: "Blue American Tourister bag left near the reception.",
+    category: "Bags",
+    location: "Small Reception Ground Floor",
+    happened_at: "not-a-valid-date",
+  });
+
+  const found = createReport({
+    id: "found-brand",
+    kind: "found",
+    title: "Blue American Tourister Bag",
+    description: "Found a blue American Tourister backpack.",
+    category: "Bags",
+    location: "Sports Complex Ground",
+    happened_at: new Date("2026-11-08T10:00:00Z").toISOString(),
+  });
+
+  const result = scoreReportPair(lost, found);
+  const attrFactor = result.factors.find((f) => f.name === "Attributes");
+  assert.equal(attrFactor?.matched, true);
+  assert.match(attrFactor?.detail ?? "", /american tourister/i);
+
+  const locationFactor = result.factors.find((f) => f.name === "Location");
+  // "Small Reception Ground Floor" must NOT match "Uni Mall" ("mall") or "Sports Complex" ("ground")
+  assert.notEqual(locationFactor?.score, 15);
+
+  const dateFactor = result.factors.find((f) => f.name === "Date");
+  assert.equal(dateFactor?.detail.includes("NaN"), false);
+});

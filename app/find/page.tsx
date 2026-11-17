@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Plus } from "lucide-react";
-import { getMember } from "@/lib/access";
+import { getMember, isBackendConfigured } from "@/lib/access";
 import { MemberGate } from "@/components/member-gate";
 import { FlowVideo } from "@/components/flow-video";
 import { FindList } from "@/components/find-list";
@@ -28,8 +28,8 @@ export default async function FindPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const configured = Boolean(process.env.MONGODB_URI && process.env.AUTH_SECRET && process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
-  const { approved } = configured ? await getMember() : { approved: false };
+  const configured = isBackendConfigured();
+  const { approved } = await getMember();
   if (configured && !approved)
     return (
       <MemberGate message="Sign in with a confirmed Gmail account to browse campus reports." />
@@ -89,7 +89,7 @@ export default async function FindPage({
       </div>
       {createdParam === "1" && (
         <div className="success-banner" role="status">
-          Your {filters.kind === "found" ? "found" : "lost"} item is saved and now appears on the campus board.
+          Your {filters.kind === "found" ? "found item" : filters.kind === "lost" ? "lost item" : "item"} is saved and now appears on the campus board.
           {photosParam === "unavailable" && " The report was saved, but its photo could not be uploaded."}
         </div>
       )}

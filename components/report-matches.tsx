@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Sparkles, ArrowRight, ShieldCheck, MapPin, CalendarDays, CheckCircle2 } from "lucide-react";
+import { formatCampusDate } from "@/lib/datetime";
 import type { MatchResult } from "@/lib/matching";
 import { states } from "@/lib/types";
 
@@ -40,7 +41,7 @@ export function ReportMatches({ matches, targetKind }: { matches: MatchResult[];
                   <Sparkles size={11} /> {totalScore}% Match
                 </span>
                 <span className="match-kind-tag">
-                  {candidate.kind === "lost" ? "Reported lost" : "Reported found"} · {states[candidate.state as keyof typeof states]}
+                  {candidate.kind === "lost" ? "Reported lost" : "Reported found"} · {states[candidate.state as keyof typeof states] || candidate.state}
                 </span>
               </div>
 
@@ -51,7 +52,7 @@ export function ReportMatches({ matches, targetKind }: { matches: MatchResult[];
                     <MapPin size={13} /> {candidate.location}
                   </span>
                   <span>
-                    <CalendarDays size={13} /> {new Date(candidate.happened_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                    <CalendarDays size={13} /> {formatCampusDate(candidate.happened_at, { day: "numeric", month: "short" })}
                   </span>
                 </div>
 
